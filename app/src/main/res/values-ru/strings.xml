@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Noble Numbers</string>
+    <string name="play">Играть</string>
+    <string name="settings">Настройки</string>
+    <string name="pause">Пауза</string>
+    <string name="resume">Продолжить</string>
+    <string name="new_game">Новая игра</string>
+    <string name="main_menu">Главное меню</string>
+    <string name="game_over">Игра окончена</string>
+    <string name="score">Счёт</string>
+    <string name="best">Лучший результат</string>
+    <string name="final_score">Итоговые очки</string>
+    <string name="continue_text">Продолжить</string>
+    <string name="watch_ad">Смотреть рекламу</string>
+    <string name="continue_watch_ad">Продолжить - смотреть рекламу</string>
+    <string name="frozen_mode">Режим заморозки</string>
+    <string name="sound">Звук</string>
+    <string name="vibration">Вибрация</string>
+    <string name="language">Язык</string>
+    <string name="privacy_policy">Политика конфиденциальности</string>
+    <string name="new_game_dialog_message">Начать новую игру? Текущий прогресс будет потерян.</string>
+    <string name="cancel">Отмена</string>
+    <string name="start">Начать</string>
+    <string name="no_available_moves">Нет доступных ходов</string>
+    <string name="internet_unavailable">Интернет недоступен</string>
+    <string name="ad_unavailable">Реклама недоступна</string>
+    <string name="plus_five_moves">+5 ходов</string>
+    <string name="target_progress">Прогресс к 4096</string>
+    <string name="moves_remaining">Осталось ходов: %1$d</string>
+    <string name="english">English</string>
+    <string name="russian">Русский</string>
+    <string name="close">Закрыть</string>
+    <string name="board_content_description">Игровое поле</string>
+    <string name="pause_content_description">Поставить игру на паузу</string>
+    <string name="settings_content_description">Открыть настройки</string>
+    <string name="new_game_content_description">Начать новую игру</string>
+    <string name="frozen_tile_description">Замороженная плитка %1$d, осталось ходов: %2$d</string>
+    <string name="tile_description">Плитка %1$d</string>
+</resources>

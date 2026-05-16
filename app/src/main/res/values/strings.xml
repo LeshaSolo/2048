@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Noble Numbers</string>
+    <string name="play">Play</string>
+    <string name="settings">Settings</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="new_game">New Game</string>
+    <string name="main_menu">Main Menu</string>
+    <string name="game_over">Game Over</string>
+    <string name="score">Score</string>
+    <string name="best">Best</string>
+    <string name="final_score">Final Score</string>
+    <string name="continue_text">Continue</string>
+    <string name="watch_ad">Watch Ad</string>
+    <string name="continue_watch_ad">Continue - Watch Ad</string>
+    <string name="frozen_mode">Frozen Mode</string>
+    <string name="sound">Sound</string>
+    <string name="vibration">Vibration</string>
+    <string name="language">Language</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="new_game_dialog_message">Start a new game? Current progress will be lost.</string>
+    <string name="cancel">Cancel</string>
+    <string name="start">Start</string>
+    <string name="no_available_moves">No available moves</string>
+    <string name="internet_unavailable">Internet unavailable</string>
+    <string name="ad_unavailable">Ad unavailable</string>
+    <string name="plus_five_moves">+5 moves</string>
+    <string name="target_progress">Progress to 4096</string>
+    <string name="moves_remaining">Moves remaining: %1$d</string>
+    <string name="english">English</string>
+    <string name="russian">Russian</string>
+    <string name="close">Close</string>
+    <string name="board_content_description">Game board</string>
+    <string name="pause_content_description">Pause game</string>
+    <string name="settings_content_description">Open settings</string>
+    <string name="new_game_content_description">Start new game</string>
+    <string name="frozen_tile_description">Frozen tile %1$d, %2$d moves remaining</string>
+    <string name="tile_description">Tile %1$d</string>
+</resources>
