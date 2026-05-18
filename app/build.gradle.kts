@@ -17,8 +17,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "UPDATE_GITHUB_OWNER", "\"al93zv-arch\"")
-        buildConfigField("String", "UPDATE_GITHUB_REPO", "\"Numble-Numbers\"")
+        buildConfigField("String", "UPDATE_GITHUB_OWNER", "\"LeshaSolo\"")
+        buildConfigField("String", "UPDATE_GITHUB_REPO", "\"2048\"")
         buildConfigField("String", "UPDATE_APK_ASSET", "\"noble-numbers.apk\"")
     }
 
