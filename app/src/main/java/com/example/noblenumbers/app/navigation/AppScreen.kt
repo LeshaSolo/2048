@@ -5,5 +5,6 @@ enum class AppScreen {
     Game,
     Pause,
     Settings,
+    Records,
     GameOver,
 }

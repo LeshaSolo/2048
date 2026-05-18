@@ -16,6 +16,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "UPDATE_GITHUB_OWNER", "\"al93zv-arch\"")
+        buildConfigField("String", "UPDATE_GITHUB_REPO", "\"Numble-Numbers\"")
+        buildConfigField("String", "UPDATE_APK_ASSET", "\"noble-numbers.apk\"")
     }
 
     buildTypes {
@@ -39,6 +43,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

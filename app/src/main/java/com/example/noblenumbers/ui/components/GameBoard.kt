@@ -48,8 +48,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.noblenumbers.R
+import androidx.compose.animation.core.tween
 import com.example.noblenumbers.game.model.Board
 import com.example.noblenumbers.game.model.MoveDirection
+import com.example.noblenumbers.game.model.ScorePopup
 import com.example.noblenumbers.ui.localizedString
 import com.example.noblenumbers.ui.model.BoardTileUi
 import com.example.noblenumbers.ui.model.toBoardTileUi
@@ -75,6 +77,7 @@ fun NobleGameBoard(
     displayTiles: List<BoardTileUi>?,
     onSwipe: (MoveDirection) -> Unit,
     modifier: Modifier = Modifier,
+    scorePopups: List<ScorePopup> = emptyList(),
 ) {
     val boardDescription = localizedString(R.string.board_content_description)
     val tiles = displayTiles ?: board.tiles.map { it.toBoardTileUi() }
@@ -171,7 +174,67 @@ fun NobleGameBoard(
                 )
             }
         }
+
+        scorePopups.forEach { popup ->
+            key("popup-${popup.row}-${popup.column}-${popup.value}") {
+                ScorePopupTile(
+                    value = popup.value,
+                    cellSize = cellSize,
+                    gap = gap,
+                    row = popup.row,
+                    column = popup.column,
+                )
+            }
+        }
     }
+}
+
+@Composable
+private fun ScorePopupTile(
+    value: Int,
+    cellSize: Dp,
+    gap: Dp,
+    row: Int,
+    column: Int,
+) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+    val offsetY by animateFloatAsState(
+        targetValue = if (visible) -20f else 0f,
+        animationSpec = tween(durationMillis = 400),
+        label = "score-popup-y",
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (visible) 0f else 1f,
+        animationSpec = tween(durationMillis = 400),
+        label = "score-popup-alpha",
+    )
+    val fontSize = when {
+        value < 100 -> 16
+        value < 1000 -> 14
+        else -> 12
+    }
+    Text(
+        text = "+$value",
+        modifier = Modifier
+            .offset(x = (cellSize + gap) * column, y = (cellSize + gap) * row + offsetY.dp)
+            .size(cellSize)
+            .zIndex(5000f),
+        color = NoblePalette.GoldLight.copy(alpha = alpha),
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        style = androidx.compose.material3.MaterialTheme.typography.titleLarge.copy(
+            fontFamily = FontFamily.Serif,
+            fontWeight = FontWeight.Bold,
+            fontSize = fontSize.sp,
+            shadow = Shadow(
+                color = Color.Black.copy(alpha = 0.6f),
+                offset = Offset(0f, 1f),
+                blurRadius = 2f,
+            ),
+        ),
+    )
 }
 
 private fun tileRenderLayer(tile: BoardTileUi): Float = when {
@@ -241,11 +304,27 @@ fun NobleTile(
     }
     val radius = 10.dp
 
+    val glow = tileGlow(tile.value)
+
     Box(
         modifier = modifier
             .scale(scale)
             .semantics { contentDescription = description }
             .drawBehind {
+                if (glow != null) {
+                    drawRoundRect(
+                        color = glow.copy(alpha = 0.35f * alpha),
+                        topLeft = Offset(-3.dp.toPx(), -3.dp.toPx()),
+                        size = Size(size.width + 6.dp.toPx(), size.height + 6.dp.toPx()),
+                        cornerRadius = CornerRadius((radius + 2.dp).toPx()),
+                    )
+                    drawRoundRect(
+                        color = glow.copy(alpha = 0.18f * alpha),
+                        topLeft = Offset(-6.dp.toPx(), -6.dp.toPx()),
+                        size = Size(size.width + 12.dp.toPx(), size.height + 12.dp.toPx()),
+                        cornerRadius = CornerRadius((radius + 4.dp).toPx()),
+                    )
+                }
                 drawRoundRect(
                     color = Color.Black.copy(alpha = 0.38f * alpha),
                     topLeft = Offset(3.dp.toPx(), 5.dp.toPx()),
@@ -268,6 +347,14 @@ fun NobleTile(
                     size = Size(size.width - 4.dp.toPx(), size.height * 0.32f),
                     cornerRadius = CornerRadius(radius.toPx()),
                 )
+                if (tile.isMerging && glow != null) {
+                    drawRoundRect(
+                        color = glow.copy(alpha = 0.28f),
+                        topLeft = Offset(0f, 0f),
+                        size = size,
+                        cornerRadius = CornerRadius(radius.toPx()),
+                    )
+                }
             }
             .border(2.dp, tileBorderColor(tile.value).copy(alpha = alpha), RoundedCornerShape(radius)),
         contentAlignment = Alignment.Center,
@@ -326,12 +413,21 @@ fun NobleFrozenTileOverlay(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val frost = NoblePalette.FrostWhite.copy(alpha = 0.72f)
             val shadow = NoblePalette.DeepIceShadow.copy(alpha = 0.38f)
-            drawLine(frost, Offset(size.width * 0.18f, size.height * 0.2f), Offset(size.width * 0.5f, size.height * 0.48f), 2.1f)
-            drawLine(frost, Offset(size.width * 0.5f, size.height * 0.48f), Offset(size.width * 0.82f, size.height * 0.36f), 2.1f)
-            drawLine(frost, Offset(size.width * 0.48f, size.height * 0.5f), Offset(size.width * 0.62f, size.height * 0.8f), 1.7f)
-            drawLine(shadow, Offset(size.width * 0.14f, size.height * 0.84f), Offset(size.width * 0.88f, size.height * 0.12f), 1.2f)
-            drawCircle(frost, radius = 3.dp.toPx(), center = Offset(size.width * 0.18f, size.height * 0.18f))
-            drawCircle(frost.copy(alpha = 0.56f), radius = 2.dp.toPx(), center = Offset(size.width * 0.82f, size.height * 0.78f))
+            val bright = NoblePalette.FrostWhite.copy(alpha = 0.9f)
+            val w = size.width
+            val h = size.height
+            drawLine(frost, Offset(w * 0.18f, h * 0.2f), Offset(w * 0.5f, h * 0.48f), 2.1f)
+            drawLine(frost, Offset(w * 0.5f, h * 0.48f), Offset(w * 0.82f, h * 0.36f), 2.1f)
+            drawLine(frost, Offset(w * 0.48f, h * 0.5f), Offset(w * 0.62f, h * 0.8f), 1.7f)
+            drawLine(shadow, Offset(w * 0.14f, h * 0.84f), Offset(w * 0.88f, h * 0.12f), 1.2f)
+            drawLine(bright, Offset(w * 0.32f, h * 0.14f), Offset(w * 0.44f, h * 0.26f), 1.4f)
+            drawLine(bright.copy(alpha = 0.6f), Offset(w * 0.72f, h * 0.52f), Offset(w * 0.88f, h * 0.68f), 1.3f)
+            drawLine(frost.copy(alpha = 0.5f), Offset(w * 0.12f, h * 0.54f), Offset(w * 0.28f, h * 0.72f), 1.1f)
+            drawLine(frost.copy(alpha = 0.55f), Offset(w * 0.68f, h * 0.14f), Offset(w * 0.82f, h * 0.28f), 1.0f)
+            drawCircle(bright, radius = 3.dp.toPx(), center = Offset(w * 0.18f, h * 0.18f))
+            drawCircle(frost.copy(alpha = 0.56f), radius = 2.dp.toPx(), center = Offset(w * 0.82f, h * 0.78f))
+            drawCircle(bright.copy(alpha = 0.5f), radius = 1.8.dp.toPx(), center = Offset(w * 0.66f, h * 0.22f))
+            drawCircle(frost.copy(alpha = 0.4f), radius = 1.5.dp.toPx(), center = Offset(w * 0.24f, h * 0.68f))
         }
         @Suppress("UNUSED_VARIABLE")
         val countdownKeptForSemantics = remainingMoves
@@ -401,6 +497,12 @@ private fun tileBorderColor(value: Int): Color = when {
     value >= 4096 -> NoblePalette.GoldLight
     value >= 512 -> NoblePalette.DarkParchment
     else -> NoblePalette.Brass
+}
+
+private fun tileGlow(value: Int): Color? = when {
+    value >= 4096 -> NoblePalette.GoldLight
+    value >= 1024 -> NoblePalette.DarkParchment.copy(alpha = 0.7f)
+    else -> null
 }
 
 private fun numberColor(value: Int, frozen: Boolean): Color = when {

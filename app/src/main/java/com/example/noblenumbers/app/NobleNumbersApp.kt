@@ -15,6 +15,7 @@ import com.example.noblenumbers.ui.screens.GameOverScreen
 import com.example.noblenumbers.ui.screens.GameScreen
 import com.example.noblenumbers.ui.screens.MainMenuScreen
 import com.example.noblenumbers.ui.screens.PauseScreen
+import com.example.noblenumbers.ui.screens.RecordsScreen
 import com.example.noblenumbers.ui.screens.SettingsScreen
 import com.example.noblenumbers.ui.theme.NobleNumbersTheme
 
@@ -32,16 +33,21 @@ fun NobleNumbersApp(
             }
             when (state.screen) {
                 AppScreen.MainMenu -> MainMenuScreen(
-                    bestScore = state.game.bestScore,
-                    onPlay = viewModel::playFromMenu,
+                    hasSavedGame = state.hasSavedGame,
+                    onNewGame = viewModel::playFromMenu,
+                    onContinue = viewModel::continueFromMenu,
+                    onRecords = viewModel::openRecords,
                     onSettings = viewModel::openSettings,
+                    onExit = { activity?.finish() },
                 )
 
                 AppScreen.Game -> GameScreen(
                     game = state.game,
                     displayTiles = state.displayTiles,
+                    scorePopups = state.scorePopups,
                     onSwipe = viewModel::move,
                     onNewGame = viewModel::requestNewGame,
+                    onUndo = viewModel::undo,
                     onSettings = viewModel::openSettings,
                     onPause = viewModel::pause,
                 )
@@ -63,10 +69,19 @@ fun NobleNumbersApp(
 
                 AppScreen.Settings -> SettingsScreen(
                     settings = state.settings,
+                    updateState = state.update,
                     onSoundChanged = viewModel::setSoundEnabled,
                     onVibrationChanged = viewModel::setVibrationEnabled,
                     onLanguageChanged = viewModel::setLanguage,
+                    onCheckUpdates = viewModel::checkForUpdates,
+                    onDownloadAndInstallUpdate = viewModel::downloadAndInstallUpdate,
+                    onInstallDownloadedUpdate = viewModel::installDownloadedUpdate,
                     onClose = viewModel::closeSettings,
+                )
+
+                AppScreen.Records -> RecordsScreen(
+                    recentScores = state.recentScores,
+                    onClose = viewModel::goToMainMenu,
                 )
             }
 

@@ -11,6 +11,7 @@ import com.example.noblenumbers.audio.SoundEvent
 import com.example.noblenumbers.audio.SoundManager
 import com.example.noblenumbers.data.AppSettings
 import com.example.noblenumbers.data.BestScoreRepository
+import com.example.noblenumbers.data.GameProgressRepository
 import com.example.noblenumbers.data.SettingsRepository
 import com.example.noblenumbers.game.logic.GameEngine
 import com.example.noblenumbers.game.logic.KotlinRandomProvider
@@ -18,10 +19,18 @@ import com.example.noblenumbers.game.logic.MoveOutcome
 import com.example.noblenumbers.game.model.GameState
 import com.example.noblenumbers.game.model.MoveAnimation
 import com.example.noblenumbers.game.model.MoveDirection
+import com.example.noblenumbers.game.model.ScorePopup
 import com.example.noblenumbers.ui.model.BoardTileUi
 import com.example.noblenumbers.ui.model.toBoardTileUi
+import com.example.noblenumbers.updates.AppUpdateInstaller
+import com.example.noblenumbers.updates.AppUpdateRepository
+import com.example.noblenumbers.updates.AvailableUpdate
+import com.example.noblenumbers.updates.InstallLaunchResult
+import com.example.noblenumbers.updates.UpdateCheckResult
+import com.example.noblenumbers.updates.UpdateError
 import com.example.noblenumbers.vibration.VibrationEvent
 import com.example.noblenumbers.vibration.VibrationManager
+import java.io.File
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,11 +44,15 @@ class NobleNumbersViewModel(
 ) : AndroidViewModel(application) {
     private val settingsRepository = SettingsRepository(application)
     private val bestScoreRepository = BestScoreRepository(application)
+    private val gameProgressRepository = GameProgressRepository(application)
     private val engine = GameEngine(KotlinRandomProvider())
     private val soundManager = SoundManager(application)
     private val vibrationManager = VibrationManager(application)
     private val adsManager: RewardedAdsManager = FakeRewardedAdsManager()
+    private val updateRepository = AppUpdateRepository(application)
+    private val updateInstaller = AppUpdateInstaller(application)
     private var moveAnimationJob: Job? = null
+    private var downloadedUpdateApk: File? = null
 
     private val _uiState = MutableStateFlow(NobleNumbersUiState())
     val uiState: StateFlow<NobleNumbersUiState> = _uiState.asStateFlow()
@@ -57,6 +70,24 @@ class NobleNumbersViewModel(
             }
         }
         viewModelScope.launch {
+            gameProgressRepository.savedGame.collectLatest { savedGame ->
+                val current = _uiState.value
+                _uiState.value = if (savedGame != null && current.screen == AppScreen.MainMenu) {
+                    current.copy(
+                        game = savedGame.copy(bestScore = maxOf(savedGame.bestScore, current.game.bestScore)),
+                        hasSavedGame = true,
+                    )
+                } else {
+                    current.copy(hasSavedGame = savedGame != null)
+                }
+            }
+        }
+        viewModelScope.launch {
+            gameProgressRepository.recentScores.collectLatest { recentScores ->
+                _uiState.value = _uiState.value.copy(recentScores = recentScores)
+            }
+        }
+        viewModelScope.launch {
             adsManager.isRewardedAdAvailable.collectLatest { available ->
                 _uiState.value = _uiState.value.copy(rewardedAdAvailable = available)
             }
@@ -67,8 +98,22 @@ class NobleNumbersViewModel(
         playButtonClick()
         moveAnimationJob?.cancel()
         val best = _uiState.value.game.bestScore
+        val newGame = engine.newGame(best)
         _uiState.value = _uiState.value.copy(
-            game = engine.newGame(best),
+            game = newGame,
+            screen = AppScreen.Game,
+            displayTiles = null,
+            isAnimatingMove = false,
+            hasSavedGame = true,
+        )
+        viewModelScope.launch { gameProgressRepository.saveGame(newGame) }
+    }
+
+    fun continueFromMenu() {
+        if (!_uiState.value.hasSavedGame) return
+        playButtonClick()
+        moveAnimationJob?.cancel()
+        _uiState.value = _uiState.value.copy(
             screen = AppScreen.Game,
             displayTiles = null,
             isAnimatingMove = false,
@@ -88,13 +133,16 @@ class NobleNumbersViewModel(
         playButtonClick()
         moveAnimationJob?.cancel()
         val best = _uiState.value.game.bestScore
+        val newGame = engine.newGame(best)
         _uiState.value = _uiState.value.copy(
-            game = engine.newGame(best),
+            game = newGame,
             screen = AppScreen.Game,
             showNewGameDialog = false,
             displayTiles = null,
             isAnimatingMove = false,
+            hasSavedGame = true,
         )
+        viewModelScope.launch { gameProgressRepository.saveGame(newGame) }
     }
 
     fun move(direction: MoveDirection) {
@@ -108,6 +156,7 @@ class NobleNumbersViewModel(
                     game = event.state,
                     screen = if (event.state.gameOver) AppScreen.GameOver else current.screen,
                 )
+                persistGameProgress(event.state, current.game.gameOver)
             }
             is MoveOutcome.Success -> {
                 startMoveAnimation(
@@ -118,6 +167,9 @@ class NobleNumbersViewModel(
                 if (outcome.merged) {
                     soundManager.play(SoundEvent.Merge, current.settings.soundEnabled)
                     vibrationManager.vibrate(VibrationEvent.Merge, current.settings.vibrationEnabled)
+                    if (outcome.comboLevel >= 2) {
+                        vibrationManager.vibrate(VibrationEvent.Combo, current.settings.vibrationEnabled)
+                    }
                 } else {
                     soundManager.play(SoundEvent.Swipe, current.settings.soundEnabled)
                     vibrationManager.vibrate(VibrationEvent.Swipe, current.settings.vibrationEnabled)
@@ -136,12 +188,25 @@ class NobleNumbersViewModel(
                     soundManager.play(SoundEvent.GameOver, current.settings.soundEnabled)
                     vibrationManager.vibrate(VibrationEvent.GameOver, current.settings.vibrationEnabled)
                 }
+                persistGameProgress(event.state, current.game.gameOver)
             }
         }
 
         if (event.state.bestScore > current.game.bestScore) {
             viewModelScope.launch { bestScoreRepository.saveBestScore(event.state.bestScore) }
         }
+    }
+
+    fun undo() {
+        val current = _uiState.value
+        if (current.game.undoSnapshot == null || current.isAnimatingMove) return
+        playButtonClick()
+        val undone = engine.undo(current.game)
+        _uiState.value = current.copy(
+            game = undone,
+            displayTiles = null,
+        )
+        viewModelScope.launch { gameProgressRepository.saveGame(undone) }
     }
 
     fun pause() {
@@ -159,6 +224,14 @@ class NobleNumbersViewModel(
         _uiState.value = _uiState.value.copy(
             previousScreen = _uiState.value.screen,
             screen = AppScreen.Settings,
+        )
+    }
+
+    fun openRecords() {
+        playButtonClick()
+        _uiState.value = _uiState.value.copy(
+            previousScreen = _uiState.value.screen,
+            screen = AppScreen.Records,
         )
     }
 
@@ -188,6 +261,10 @@ class NobleNumbersViewModel(
                 closeSettings()
                 true
             }
+            AppScreen.Records -> {
+                goToMainMenu()
+                true
+            }
             AppScreen.GameOver -> {
                 goToMainMenu()
                 true
@@ -207,6 +284,60 @@ class NobleNumbersViewModel(
         viewModelScope.launch { settingsRepository.setLanguage(languageTag) }
     }
 
+    fun checkForUpdates() {
+        playButtonClick()
+        _uiState.value = _uiState.value.copy(update = AppUpdateUiState(status = UpdateStatus.Checking))
+        viewModelScope.launch {
+            val result = runCatching { updateRepository.checkLatestRelease() }
+                .getOrElse { UpdateCheckResult.Error(UpdateError.Network) }
+            _uiState.value = when (result) {
+                UpdateCheckResult.NoUpdate -> _uiState.value.copy(
+                    update = AppUpdateUiState(status = UpdateStatus.NoUpdate),
+                )
+                is UpdateCheckResult.UpdateAvailable -> _uiState.value.copy(
+                    update = AppUpdateUiState(
+                        status = UpdateStatus.Available,
+                        availableUpdate = result.update,
+                    ),
+                )
+                is UpdateCheckResult.Error -> _uiState.value.copy(
+                    update = AppUpdateUiState(
+                        status = UpdateStatus.Error,
+                        error = result.error,
+                    ),
+                )
+            }
+        }
+    }
+
+    fun downloadAndInstallUpdate() {
+        playButtonClick()
+        val update = _uiState.value.update.availableUpdate ?: return
+        _uiState.value = _uiState.value.copy(
+            update = _uiState.value.update.copy(status = UpdateStatus.Downloading, error = null),
+        )
+        viewModelScope.launch {
+            val apkFile = runCatching { updateRepository.download(update) }
+                .getOrElse {
+                    _uiState.value = _uiState.value.copy(
+                        update = _uiState.value.update.copy(
+                            status = UpdateStatus.Error,
+                            error = UpdateError.DownloadFailed,
+                        ),
+                    )
+                    return@launch
+                }
+            downloadedUpdateApk = apkFile
+            launchDownloadedUpdate(apkFile)
+        }
+    }
+
+    fun installDownloadedUpdate() {
+        playButtonClick()
+        val apkFile = downloadedUpdateApk ?: return
+        launchDownloadedUpdate(apkFile)
+    }
+
     fun continueWithAd(activity: Activity) {
         val current = _uiState.value
         if (current.game.continueUsed || !current.rewardedAdAvailable) return
@@ -214,10 +345,13 @@ class NobleNumbersViewModel(
         adsManager.showRewardedAd(
             activity = activity,
             onRewardEarned = {
+                val continuedGame = engine.grantContinue(_uiState.value.game)
                 _uiState.value = _uiState.value.copy(
-                    game = engine.grantContinue(_uiState.value.game),
+                    game = continuedGame,
+                    hasSavedGame = true,
                     screen = AppScreen.Game,
                 )
+                viewModelScope.launch { gameProgressRepository.saveGame(continuedGame) }
             },
             onUnavailable = {
                 _uiState.value = _uiState.value.copy(rewardedAdAvailable = false)
@@ -229,6 +363,38 @@ class NobleNumbersViewModel(
         val current = _uiState.value
         soundManager.play(SoundEvent.ButtonClick, current.settings.soundEnabled)
         vibrationManager.vibrate(VibrationEvent.ButtonClick, current.settings.vibrationEnabled)
+    }
+
+    private fun persistGameProgress(game: GameState, wasGameOver: Boolean) {
+        viewModelScope.launch {
+            if (game.gameOver) {
+                gameProgressRepository.clearSavedGame()
+                if (!wasGameOver) {
+                    gameProgressRepository.addRecentScore(game.score)
+                }
+            } else {
+                gameProgressRepository.saveGame(game)
+            }
+        }
+    }
+
+    private fun launchDownloadedUpdate(apkFile: File) {
+        val result = updateInstaller.launchInstall(apkFile)
+        val status = when (result) {
+            InstallLaunchResult.Started -> UpdateStatus.InstallerStarted
+            InstallLaunchResult.PermissionRequired -> UpdateStatus.PermissionRequired
+            InstallLaunchResult.Failed -> UpdateStatus.Error
+        }
+        _uiState.value = _uiState.value.copy(
+            update = _uiState.value.update.copy(
+                status = status,
+                error = if (result == InstallLaunchResult.Failed) {
+                    UpdateError.InstallerLaunchFailed
+                } else {
+                    null
+                },
+            ),
+        )
     }
 
     private fun startMoveAnimation(
@@ -245,6 +411,7 @@ class NobleNumbersViewModel(
             isAnimatingMove = true,
         )
         moveAnimationJob = viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(scorePopups = animation.scorePopups)
             delay(ANIMATION_BOOTSTRAP_DELAY_MILLIS)
             _uiState.value = _uiState.value.copy(displayTiles = animation.slideTargetTiles())
             delay(SLIDE_PHASE_MILLIS)
@@ -265,6 +432,7 @@ class NobleNumbersViewModel(
 
             _uiState.value = _uiState.value.copy(
                 displayTiles = null,
+                scorePopups = emptyList(),
                 isAnimatingMove = false,
                 screen = if (finalState.gameOver) AppScreen.GameOver else AppScreen.Game,
             )
@@ -302,10 +470,10 @@ class NobleNumbersViewModel(
     }
 
     private companion object {
-        const val ANIMATION_BOOTSTRAP_DELAY_MILLIS = 16L
-        const val SLIDE_PHASE_MILLIS = 125L
-        const val MERGE_PHASE_MILLIS = 90L
-        const val SPAWN_PHASE_MILLIS = 95L
+        const val ANIMATION_BOOTSTRAP_DELAY_MILLIS = 12L
+        const val SLIDE_PHASE_MILLIS = 100L
+        const val MERGE_PHASE_MILLIS = 80L
+        const val SPAWN_PHASE_MILLIS = 80L
     }
 }
 
@@ -315,7 +483,28 @@ data class NobleNumbersUiState(
     val game: GameState = GameState(),
     val settings: AppSettings = AppSettings(),
     val rewardedAdAvailable: Boolean = false,
+    val hasSavedGame: Boolean = false,
+    val recentScores: List<Int> = emptyList(),
     val showNewGameDialog: Boolean = false,
     val displayTiles: List<BoardTileUi>? = null,
     val isAnimatingMove: Boolean = false,
+    val scorePopups: List<ScorePopup> = emptyList(),
+    val update: AppUpdateUiState = AppUpdateUiState(),
 )
+
+data class AppUpdateUiState(
+    val status: UpdateStatus = UpdateStatus.Idle,
+    val availableUpdate: AvailableUpdate? = null,
+    val error: UpdateError? = null,
+)
+
+enum class UpdateStatus {
+    Idle,
+    Checking,
+    NoUpdate,
+    Available,
+    Downloading,
+    PermissionRequired,
+    InstallerStarted,
+    Error,
+}

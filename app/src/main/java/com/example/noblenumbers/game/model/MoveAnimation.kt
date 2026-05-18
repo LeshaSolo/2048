@@ -5,6 +5,13 @@ data class MoveAnimation(
     val motions: List<TileMotion>,
     val merges: List<TileMerge>,
     val spawnedTileId: Long? = null,
+    val scorePopups: List<ScorePopup> = emptyList(),
+)
+
+data class ScorePopup(
+    val value: Int,
+    val row: Int,
+    val column: Int,
 )
 
 data class TileMotion(

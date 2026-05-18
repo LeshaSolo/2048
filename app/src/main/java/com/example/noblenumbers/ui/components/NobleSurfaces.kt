@@ -86,14 +86,15 @@ fun NobleWoodBackground(
                     Color.Black.copy(alpha = 0.12f),
                     NoblePalette.Gold.copy(alpha = 0.04f),
                 )
-                repeat(28) { index ->
-                    val y = size.height * (index + 1) / 30f
-                    val wave = if (index % 2 == 0) 16.dp.toPx() else -12.dp.toPx()
+                repeat(32) { index ->
+                    val y = size.height * (index + 1) / 33f
+                    val wave = if (index % 2 == 0) 18.dp.toPx() else -14.dp.toPx()
+                    val xOffset = if (index % 4 == 0) -16.dp.toPx() else if (index % 4 == 2) 8.dp.toPx() else 0f
                     drawLine(
                         color = grain[index % grain.size],
-                        start = Offset(-24.dp.toPx(), y),
-                        end = Offset(size.width + 24.dp.toPx(), y + wave),
-                        strokeWidth = if (index % 3 == 0) 2.2f else 1.1f,
+                        start = Offset(-20.dp.toPx() + xOffset, y),
+                        end = Offset(size.width + 20.dp.toPx() + xOffset, y + wave),
+                        strokeWidth = if (index % 3 == 0) 2.4f else if (index % 2 == 0) 1.6f else 1.0f,
                     )
                 }
                 drawRect(
@@ -101,6 +102,20 @@ fun NobleWoodBackground(
                         colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.34f)),
                         center = Offset(size.width * 0.5f, size.height * 0.42f),
                         radius = size.maxDimension * 0.78f,
+                    ),
+                )
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)),
+                        center = Offset.Zero,
+                        radius = size.maxDimension * 0.5f,
+                    ),
+                )
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.40f)),
+                        center = Offset(size.width, size.height),
+                        radius = size.maxDimension * 0.45f,
                     ),
                 )
             },
@@ -395,6 +410,48 @@ fun NobleHudPanel(
                     value = game.bestScore,
                     modifier = Modifier.weight(1f),
                 )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (game.comboCount > 1) {
+                    NobleParchmentPanel(
+                        modifier = Modifier.weight(1f),
+                        cornerRadius = 10.dp,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            text = "x${game.comboCount}",
+                            color = NoblePalette.Gold,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontFamily = FontFamily.Serif,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                        )
+                    }
+                }
+                if (game.nextTilePreview != null) {
+                    NobleParchmentPanel(
+                        modifier = if (game.comboCount > 1) Modifier.weight(1f) else Modifier.weight(1f),
+                        cornerRadius = 10.dp,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            text = "${game.nextTilePreview}",
+                            color = NoblePalette.Ink,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontFamily = FontFamily.Serif,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                        )
+                    }
+                }
             }
             if (game.frozenModeEnabled) {
                 NobleParchmentPanel(

@@ -20,11 +20,13 @@ class GameEngine(
             board = spawn.board
             nextId = spawn.nextTileId
         }
+        val preview = tileSpawner.nextTileValue()
         return GameState(
             board = board,
             bestScore = bestScore,
             nextTileId = nextId,
             continueAvailable = false,
+            nextTilePreview = preview,
         )
     }
 
@@ -46,7 +48,14 @@ class GameEngine(
             return EngineEvent(continuedState, MoveOutcome.Blocked)
         }
 
-        val score = state.score + move.scoreDelta
+        val undoSnapshot = if (!state.undoUsed && state.undoSnapshot == null) state else state.undoSnapshot
+
+        val newComboCount = if (move.merged) state.comboCount + 1 else 0
+        val comboMultiplier = if (newComboCount > 1) newComboCount - 1 else 0
+        val comboBonus = if (comboMultiplier > 0) (move.scoreDelta * comboMultiplier) / 4 else 0
+        val totalScoreDelta = move.scoreDelta + comboBonus
+
+        val score = state.score + totalScoreDelta
         val targetReached = state.targetReached || move.createdTarget
         val countdownBoard = decrementFrozenTiles(move.board)
         val spawn = tileSpawner.spawnTile(
@@ -54,6 +63,7 @@ class GameEngine(
             nextTileId = move.nextTileId,
             frozenModeEnabled = targetReached,
         )
+        val nextPreview = tileSpawner.nextTileValue()
         val gameOver = gameOverChecker.isGameOver(spawn.board)
         val extraMovesRemaining = if (move.moved && state.extraMovesRemaining > 0) 0 else state.extraMovesRemaining
         val updatedState = state.copy(
@@ -66,6 +76,9 @@ class GameEngine(
             continueAvailable = gameOver && !state.continueUsed,
             extraMovesRemaining = extraMovesRemaining,
             nextTileId = spawn.nextTileId,
+            undoSnapshot = undoSnapshot,
+            comboCount = newComboCount,
+            nextTilePreview = nextPreview,
         )
 
         return EngineEvent(
@@ -76,8 +89,29 @@ class GameEngine(
                 frozenTileSpawned = spawn.spawnedTile?.isFrozen == true,
                 gameOverNow = gameOver && !state.gameOver,
                 spawnedTileId = spawn.spawnedTile?.id,
-                animation = move.animation.copy(spawnedTileId = spawn.spawnedTile?.id),
+                animation = move.animation.copy(
+                    spawnedTileId = spawn.spawnedTile?.id,
+                    scorePopups = move.animation.merges.map { merge ->
+                        com.example.noblenumbers.game.model.ScorePopup(
+                            value = merge.resultValue,
+                            row = merge.row,
+                            column = merge.column,
+                        )
+                    },
+                ),
+                comboLevel = newComboCount,
             ),
+        )
+    }
+
+    fun undo(state: GameState): GameState {
+        val snapshot = state.undoSnapshot ?: return state
+        return snapshot.copy(
+            bestScore = state.bestScore,
+            undoSnapshot = null,
+            undoUsed = true,
+            comboCount = 0,
+            nextTilePreview = state.nextTilePreview,
         )
     }
 
@@ -127,5 +161,6 @@ sealed interface MoveOutcome {
         val gameOverNow: Boolean,
         val spawnedTileId: Long?,
         val animation: com.example.noblenumbers.game.model.MoveAnimation,
+        val comboLevel: Int = 0,
     ) : MoveOutcome
 }

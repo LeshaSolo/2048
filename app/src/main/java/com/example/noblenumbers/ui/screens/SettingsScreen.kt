@@ -23,7 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.noblenumbers.R
+import com.example.noblenumbers.app.AppUpdateUiState
+import com.example.noblenumbers.app.UpdateStatus
 import com.example.noblenumbers.data.AppSettings
+import com.example.noblenumbers.updates.UpdateError
 import com.example.noblenumbers.ui.components.NobleButton
 import com.example.noblenumbers.ui.components.NobleButtonStyle
 import com.example.noblenumbers.ui.components.NobleParchmentPanel
@@ -37,9 +40,13 @@ private const val PRIVACY_POLICY_URL = "https://example.com/privacy" // TODO rep
 @Composable
 fun SettingsScreen(
     settings: AppSettings,
+    updateState: AppUpdateUiState,
     onSoundChanged: (Boolean) -> Unit,
     onVibrationChanged: (Boolean) -> Unit,
     onLanguageChanged: (String) -> Unit,
+    onCheckUpdates: () -> Unit,
+    onDownloadAndInstallUpdate: () -> Unit,
+    onInstallDownloadedUpdate: () -> Unit,
     onClose: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -99,6 +106,18 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.titleLarge,
                         )
                     }
+                    Text(
+                        text = localizedString(R.string.updates),
+                        color = NoblePalette.Ink,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    UpdateStatusText(updateState)
+                    UpdateActionButton(
+                        updateState = updateState,
+                        onCheckUpdates = onCheckUpdates,
+                        onDownloadAndInstallUpdate = onDownloadAndInstallUpdate,
+                        onInstallDownloadedUpdate = onInstallDownloadedUpdate,
+                    )
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -112,6 +131,69 @@ fun SettingsScreen(
             )
         }
     }
+}
+
+@Composable
+private fun UpdateStatusText(
+    updateState: AppUpdateUiState,
+) {
+    val message = when (updateState.status) {
+        UpdateStatus.Idle -> localizedString(R.string.update_idle)
+        UpdateStatus.Checking -> localizedString(R.string.update_checking)
+        UpdateStatus.NoUpdate -> localizedString(R.string.update_no_updates)
+        UpdateStatus.Available -> localizedString(
+            R.string.update_available,
+            updateState.availableUpdate?.label.orEmpty(),
+        )
+        UpdateStatus.Downloading -> localizedString(R.string.update_downloading)
+        UpdateStatus.PermissionRequired -> localizedString(R.string.update_permission_required)
+        UpdateStatus.InstallerStarted -> localizedString(R.string.update_installer_started)
+        UpdateStatus.Error -> localizedString(updateState.error.updateErrorMessageRes())
+    }
+    Text(
+        text = message,
+        color = NoblePalette.Ink,
+        style = MaterialTheme.typography.bodyLarge,
+    )
+}
+
+@Composable
+private fun UpdateActionButton(
+    updateState: AppUpdateUiState,
+    onCheckUpdates: () -> Unit,
+    onDownloadAndInstallUpdate: () -> Unit,
+    onInstallDownloadedUpdate: () -> Unit,
+) {
+    val busy = updateState.status == UpdateStatus.Checking ||
+        updateState.status == UpdateStatus.Downloading
+    val actionText = when (updateState.status) {
+        UpdateStatus.Available -> localizedString(R.string.download_and_install_update)
+        UpdateStatus.PermissionRequired -> localizedString(R.string.install_downloaded_update)
+        else -> localizedString(R.string.check_updates)
+    }
+    val action = when (updateState.status) {
+        UpdateStatus.Available -> onDownloadAndInstallUpdate
+        UpdateStatus.PermissionRequired -> onInstallDownloadedUpdate
+        else -> onCheckUpdates
+    }
+    NobleButton(
+        text = actionText,
+        onClick = action,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !busy,
+        style = NobleButtonStyle.Secondary,
+    )
+}
+
+private fun UpdateError?.updateErrorMessageRes(): Int = when (this) {
+    UpdateError.ReleaseVersionMissing -> R.string.update_error_version_missing
+    UpdateError.ApkAssetMissing -> R.string.update_error_apk_missing
+    UpdateError.DownloadFailed -> R.string.update_error_download
+    UpdateError.InstallPermissionRequired -> R.string.update_permission_required
+    UpdateError.InstallerLaunchFailed -> R.string.update_error_installer
+    UpdateError.Network,
+    null,
+    -> R.string.update_error_network
 }
 
 @Composable

@@ -20,6 +20,7 @@ class VibrationManager(
             VibrationEvent.ButtonClick -> VibrationEffect.createOneShot(12L, 48)
             VibrationEvent.Swipe -> VibrationEffect.createOneShot(16L, 54)
             VibrationEvent.Merge -> VibrationEffect.createOneShot(24L, 82)
+            VibrationEvent.Combo -> VibrationEffect.createWaveform(longArrayOf(0, 30, 20, 30), intArrayOf(80, 120, 0, 100), -1)
             VibrationEvent.TargetReached -> VibrationEffect.createOneShot(80L, VibrationEffect.DEFAULT_AMPLITUDE)
             VibrationEvent.FrozenModeStarted -> VibrationEffect.createOneShot(70L, 170)
             VibrationEvent.FrozenTileAppeared -> VibrationEffect.createOneShot(45L, 120)
@@ -39,6 +40,7 @@ class VibrationManager(
         VibrationEvent.ButtonClick,
         VibrationEvent.Swipe -> true
         VibrationEvent.Merge,
+        VibrationEvent.Combo,
         VibrationEvent.TargetReached,
         VibrationEvent.FrozenModeStarted,
         VibrationEvent.FrozenTileAppeared,
@@ -54,6 +56,7 @@ enum class VibrationEvent {
     ButtonClick,
     Swipe,
     Merge,
+    Combo,
     TargetReached,
     FrozenModeStarted,
     FrozenTileAppeared,

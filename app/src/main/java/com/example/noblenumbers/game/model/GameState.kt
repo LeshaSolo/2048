@@ -11,6 +11,10 @@ data class GameState(
     val continueUsed: Boolean = false,
     val extraMovesRemaining: Int = 0,
     val nextTileId: Long = 1L,
+    val undoSnapshot: GameState? = null,
+    val undoUsed: Boolean = false,
+    val comboCount: Int = 0,
+    val nextTilePreview: Int? = null,
 ) {
     val maxTile: Int = board.maxTileValue()
 }
