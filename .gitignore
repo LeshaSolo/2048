@@ -19,3 +19,4 @@ local.properties
 nn_*.png
 screen_*.png
 noble_window.xml
+.DS_Store
