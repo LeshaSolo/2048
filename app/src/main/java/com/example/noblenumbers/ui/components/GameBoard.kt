@@ -294,10 +294,10 @@ fun NobleTile(
     val scale by animateFloatAsState(
         targetValue = when {
             !visible -> 0.72f
-            tile.isMerging -> 1.18f
+            tile.isMerging -> 1.06f
             else -> 1f
         },
-        animationSpec = spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "noble-tile-scale",
     )
     val alpha by animateFloatAsState(
@@ -355,16 +355,9 @@ fun NobleTile(
                     size = Size(size.width - 4.dp.toPx(), size.height * 0.32f),
                     cornerRadius = CornerRadius(radius.toPx()),
                 )
-                if (tile.isMerging) {
-                    val mergeGlow = glow ?: NoblePalette.GoldLight
+                if (tile.isMerging && glow != null) {
                     drawRoundRect(
-                        color = mergeGlow.copy(alpha = 0.12f),
-                        topLeft = Offset(-3.dp.toPx(), -3.dp.toPx()),
-                        size = Size(size.width + 6.dp.toPx(), size.height + 6.dp.toPx()),
-                        cornerRadius = CornerRadius((radius + 2.dp).toPx()),
-                    )
-                    drawRoundRect(
-                        color = mergeGlow.copy(alpha = 0.32f),
+                        color = glow.copy(alpha = 0.28f),
                         topLeft = Offset(0f, 0f),
                         size = size,
                         cornerRadius = CornerRadius(radius.toPx()),
