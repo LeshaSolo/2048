@@ -58,4 +58,8 @@
     <string name="tile_description">Плитка %1$d</string>
     <string name="undo">Отмена</string>
     <string name="next_tile">Далее</string>
+    <string name="rating">Звание</string>
+    <string name="merges">Слияний</string>
+    <string name="max_tile">Макс. плитка</string>
+    <string name="longest_combo">Макс. комбо</string>
 </resources>

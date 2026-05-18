@@ -355,6 +355,14 @@ fun NobleTile(
                         cornerRadius = CornerRadius(radius.toPx()),
                     )
                 }
+                if (tile.value >= 4096) {
+                    drawRoundRect(
+                        color = NoblePalette.GoldLight.copy(alpha = 0.12f * alpha),
+                        topLeft = Offset(0f, 0f),
+                        size = size,
+                        cornerRadius = CornerRadius(radius.toPx()),
+                    )
+                }
             }
             .border(2.dp, tileBorderColor(tile.value).copy(alpha = alpha), RoundedCornerShape(radius)),
         contentAlignment = Alignment.Center,
@@ -367,6 +375,21 @@ fun NobleTile(
             tileSize = tileSize,
             color = numberColor(tile.value, tile.isFrozen),
         )
+        if (tile.value >= 2048 && !tile.isFrozen) {
+            val emblem = if (tile.value >= 4096) "\u265B" else "\u2726"
+            Text(
+                text = emblem,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 2.dp),
+                color = if (tile.value >= 4096) NoblePalette.GoldLight else NoblePalette.Gold.copy(alpha = 0.8f),
+                style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (tileSize < 52.dp) 8.sp else 11.sp,
+                    shadow = Shadow(Color.Black.copy(alpha = 0.5f), Offset(0f, 1f), 1.5f),
+                ),
+            )
+        }
         if (tile.isFrozen) {
             Text(
                 text = tile.frozenMovesRemaining.toString(),

@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
@@ -108,6 +110,8 @@ fun GameOverScreen(
                     )
                 }
             }
+            Spacer(Modifier.height(14.dp))
+            GameOverStatsPanel(game = game)
             Spacer(Modifier.height(28.dp))
             GameOverMenuButton(
                 text = localizedString(R.string.new_game),
@@ -129,6 +133,80 @@ fun GameOverScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun GameOverStatsPanel(game: GameState) {
+    NobleParchmentPanel(
+        modifier = Modifier
+            .widthIn(max = 390.dp)
+            .fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = game.gameOverRating,
+                color = NoblePalette.Gold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontFamily = FontFamily.Serif,
+                    fontWeight = FontWeight.Bold,
+                    shadow = Shadow(
+                        color = NoblePalette.DeepWood,
+                        offset = Offset(0f, 1.2f),
+                        blurRadius = 1.5f,
+                    ),
+                ),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                StatItem(
+                    label = localizedString(R.string.score),
+                    value = game.score.toString(),
+                )
+                StatItem(
+                    label = localizedString(R.string.merges),
+                    value = game.mergeCount.toString(),
+                )
+                StatItem(
+                    label = localizedString(R.string.max_tile),
+                    value = game.maxTileReached.toString(),
+                )
+                StatItem(
+                    label = localizedString(R.string.longest_combo),
+                    value = game.longestCombo.toString(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatItem(label: String, value: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = value,
+            color = NoblePalette.Ink,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontFamily = FontFamily.Serif,
+                fontWeight = FontWeight.Bold,
+            ),
+        )
+        Text(
+            text = label,
+            color = NoblePalette.Brass,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontFamily = FontFamily.Serif,
+                fontWeight = FontWeight.Medium,
+            ),
+        )
     }
 }
 

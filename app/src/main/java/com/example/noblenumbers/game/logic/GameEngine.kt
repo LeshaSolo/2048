@@ -57,6 +57,9 @@ class GameEngine(
 
         val score = state.score + totalScoreDelta
         val targetReached = state.targetReached || move.createdTarget
+        val newMergeCount = state.mergeCount + (if (move.merged) 1 else 0)
+        val newMaxTileReached = maxOf(state.maxTileReached, state.board.maxTileValue())
+        val newLongestCombo = maxOf(state.longestCombo, newComboCount)
         val countdownBoard = decrementFrozenTiles(move.board)
         val spawn = tileSpawner.spawnTile(
             board = countdownBoard,
@@ -79,6 +82,9 @@ class GameEngine(
             undoSnapshot = undoSnapshot,
             comboCount = newComboCount,
             nextTilePreview = nextPreview,
+            mergeCount = newMergeCount,
+            maxTileReached = newMaxTileReached,
+            longestCombo = newLongestCombo,
         )
 
         return EngineEvent(
@@ -112,6 +118,9 @@ class GameEngine(
             undoUsed = true,
             comboCount = 0,
             nextTilePreview = state.nextTilePreview,
+            mergeCount = state.mergeCount,
+            maxTileReached = state.maxTileReached,
+            longestCombo = state.longestCombo,
         )
     }
 

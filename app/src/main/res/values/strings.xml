@@ -58,4 +58,8 @@
     <string name="tile_description">Tile %1$d</string>
     <string name="undo">Undo</string>
     <string name="next_tile">Next</string>
+    <string name="rating">Rating</string>
+    <string name="merges">Merges</string>
+    <string name="max_tile">Max Tile</string>
+    <string name="longest_combo">Longest Combo</string>
 </resources>
