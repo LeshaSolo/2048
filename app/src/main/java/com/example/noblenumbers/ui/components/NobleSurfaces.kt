@@ -1,6 +1,7 @@
 package com.example.noblenumbers.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -25,13 +26,16 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -417,8 +421,21 @@ fun NobleHudPanel(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (game.comboCount > 1) {
+                    var comboBump by remember { mutableFloatStateOf(1f) }
+                    LaunchedEffect(game.comboCount) {
+                        comboBump = 1.35f
+                        kotlinx.coroutines.delay(100)
+                        comboBump = 0.9f
+                        kotlinx.coroutines.delay(70)
+                        comboBump = 1f
+                    }
+                    val comboScale by animateFloatAsState(
+                        targetValue = comboBump,
+                        animationSpec = spring(dampingRatio = 0.4f),
+                        label = "combo-bump",
+                    )
                     NobleParchmentPanel(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).scale(comboScale),
                         cornerRadius = 10.dp,
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     ) {

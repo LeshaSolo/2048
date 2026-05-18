@@ -49,6 +49,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.noblenumbers.R
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import com.example.noblenumbers.game.model.Board
 import com.example.noblenumbers.game.model.MoveDirection
 import com.example.noblenumbers.game.model.ScorePopup
@@ -202,32 +206,36 @@ private fun ScorePopupTile(
         visible = true
     }
     val offsetY by animateFloatAsState(
-        targetValue = if (visible) -20f else 0f,
-        animationSpec = tween(durationMillis = 400),
+        targetValue = if (visible) -48f else 0f,
+        animationSpec = tween(durationMillis = 500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
         label = "score-popup-y",
     )
     val alpha by animateFloatAsState(
         targetValue = if (visible) 0f else 1f,
-        animationSpec = tween(durationMillis = 400),
+        animationSpec = tween(durationMillis = 600, delayMillis = 100),
         label = "score-popup-alpha",
     )
-    val fontSize = when {
-        value < 100 -> 16
-        value < 1000 -> 14
-        else -> 12
-    }
+    val popupScale by animateFloatAsState(
+        targetValue = if (visible) 0.4f else 1f,
+        animationSpec = spring(
+            dampingRatio = 0.35f,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "score-popup-scale",
+    )
     Text(
         text = "+$value",
         modifier = Modifier
             .offset(x = (cellSize + gap) * column, y = (cellSize + gap) * row + offsetY.dp)
             .size(cellSize)
+            .scale(popupScale)
             .zIndex(5000f),
         color = NoblePalette.GoldLight.copy(alpha = alpha),
         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         style = androidx.compose.material3.MaterialTheme.typography.titleLarge.copy(
             fontFamily = FontFamily.Serif,
             fontWeight = FontWeight.Bold,
-            fontSize = fontSize.sp,
+            fontSize = when { value < 100 -> 16; value < 1000 -> 14; else -> 12 }.sp,
             shadow = Shadow(
                 color = Color.Black.copy(alpha = 0.6f),
                 offset = Offset(0f, 1f),
@@ -286,10 +294,10 @@ fun NobleTile(
     val scale by animateFloatAsState(
         targetValue = when {
             !visible -> 0.72f
-            tile.isMerging -> 1.12f
+            tile.isMerging -> 1.18f
             else -> 1f
         },
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        animationSpec = spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium),
         label = "noble-tile-scale",
     )
     val alpha by animateFloatAsState(
@@ -347,9 +355,16 @@ fun NobleTile(
                     size = Size(size.width - 4.dp.toPx(), size.height * 0.32f),
                     cornerRadius = CornerRadius(radius.toPx()),
                 )
-                if (tile.isMerging && glow != null) {
+                if (tile.isMerging) {
+                    val mergeGlow = glow ?: NoblePalette.GoldLight
                     drawRoundRect(
-                        color = glow.copy(alpha = 0.28f),
+                        color = mergeGlow.copy(alpha = 0.12f),
+                        topLeft = Offset(-3.dp.toPx(), -3.dp.toPx()),
+                        size = Size(size.width + 6.dp.toPx(), size.height + 6.dp.toPx()),
+                        cornerRadius = CornerRadius((radius + 2.dp).toPx()),
+                    )
+                    drawRoundRect(
+                        color = mergeGlow.copy(alpha = 0.32f),
                         topLeft = Offset(0f, 0f),
                         size = size,
                         cornerRadius = CornerRadius(radius.toPx()),
@@ -412,45 +427,64 @@ fun NobleFrozenTileOverlay(
     remainingMoves: Int,
     modifier: Modifier = Modifier,
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "frozen-pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.55f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1600, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "frozen-glow",
+    )
+    val sparkleAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1100, easing = androidx.compose.animation.core.LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "frozen-sparkle",
+    )
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
                     listOf(
-                        NoblePalette.FrostWhite.copy(alpha = 0.54f),
-                        NoblePalette.IceBlue.copy(alpha = 0.38f),
-                        NoblePalette.DeepIceShadow.copy(alpha = 0.22f),
+                        NoblePalette.FrostWhite.copy(alpha = 0.54f * pulseAlpha),
+                        NoblePalette.IceBlue.copy(alpha = 0.38f * pulseAlpha),
+                        NoblePalette.DeepIceShadow.copy(alpha = 0.22f * pulseAlpha),
                     ),
                 ),
             )
-            .border(2.dp, NoblePalette.FrostWhite.copy(alpha = 0.72f), RoundedCornerShape(10.dp)),
+            .border(2.dp, NoblePalette.FrostWhite.copy(alpha = 0.72f * pulseAlpha), RoundedCornerShape(10.dp)),
     ) {
         Image(
             painter = painterResource(R.drawable.noble_ice_overlay),
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
-            alpha = 0.72f,
+            alpha = 0.72f * pulseAlpha,
         )
         Canvas(modifier = Modifier.fillMaxSize()) {
             val frost = NoblePalette.FrostWhite.copy(alpha = 0.72f)
             val shadow = NoblePalette.DeepIceShadow.copy(alpha = 0.38f)
-            val bright = NoblePalette.FrostWhite.copy(alpha = 0.9f)
+            val bright = NoblePalette.FrostWhite.copy(alpha = 0.9f * sparkleAlpha)
             val w = size.width
             val h = size.height
-            drawLine(frost, Offset(w * 0.18f, h * 0.2f), Offset(w * 0.5f, h * 0.48f), 2.1f)
-            drawLine(frost, Offset(w * 0.5f, h * 0.48f), Offset(w * 0.82f, h * 0.36f), 2.1f)
-            drawLine(frost, Offset(w * 0.48f, h * 0.5f), Offset(w * 0.62f, h * 0.8f), 1.7f)
+            drawLine(frost.copy(alpha = 0.72f * pulseAlpha), Offset(w * 0.18f, h * 0.2f), Offset(w * 0.5f, h * 0.48f), 2.1f)
+            drawLine(frost.copy(alpha = 0.72f * pulseAlpha), Offset(w * 0.5f, h * 0.48f), Offset(w * 0.82f, h * 0.36f), 2.1f)
+            drawLine(frost.copy(alpha = 0.72f * pulseAlpha), Offset(w * 0.48f, h * 0.5f), Offset(w * 0.62f, h * 0.8f), 1.7f)
             drawLine(shadow, Offset(w * 0.14f, h * 0.84f), Offset(w * 0.88f, h * 0.12f), 1.2f)
-            drawLine(bright, Offset(w * 0.32f, h * 0.14f), Offset(w * 0.44f, h * 0.26f), 1.4f)
-            drawLine(bright.copy(alpha = 0.6f), Offset(w * 0.72f, h * 0.52f), Offset(w * 0.88f, h * 0.68f), 1.3f)
-            drawLine(frost.copy(alpha = 0.5f), Offset(w * 0.12f, h * 0.54f), Offset(w * 0.28f, h * 0.72f), 1.1f)
-            drawLine(frost.copy(alpha = 0.55f), Offset(w * 0.68f, h * 0.14f), Offset(w * 0.82f, h * 0.28f), 1.0f)
-            drawCircle(bright, radius = 3.dp.toPx(), center = Offset(w * 0.18f, h * 0.18f))
-            drawCircle(frost.copy(alpha = 0.56f), radius = 2.dp.toPx(), center = Offset(w * 0.82f, h * 0.78f))
-            drawCircle(bright.copy(alpha = 0.5f), radius = 1.8.dp.toPx(), center = Offset(w * 0.66f, h * 0.22f))
-            drawCircle(frost.copy(alpha = 0.4f), radius = 1.5.dp.toPx(), center = Offset(w * 0.24f, h * 0.68f))
+            drawLine(bright.copy(alpha = bright.alpha * sparkleAlpha), Offset(w * 0.32f, h * 0.14f), Offset(w * 0.44f, h * 0.26f), 1.4f)
+            drawLine(bright.copy(alpha = 0.6f * sparkleAlpha), Offset(w * 0.72f, h * 0.52f), Offset(w * 0.88f, h * 0.68f), 1.3f)
+            drawLine(frost.copy(alpha = 0.5f * pulseAlpha), Offset(w * 0.12f, h * 0.54f), Offset(w * 0.28f, h * 0.72f), 1.1f)
+            drawLine(frost.copy(alpha = 0.55f * pulseAlpha), Offset(w * 0.68f, h * 0.14f), Offset(w * 0.82f, h * 0.28f), 1.0f)
+            drawCircle(bright.copy(alpha = bright.alpha * sparkleAlpha), radius = 3.dp.toPx(), center = Offset(w * 0.18f, h * 0.18f))
+            drawCircle(frost.copy(alpha = 0.56f * sparkleAlpha), radius = 2.dp.toPx(), center = Offset(w * 0.82f, h * 0.78f))
+            drawCircle(bright.copy(alpha = 0.5f * sparkleAlpha), radius = 1.8.dp.toPx(), center = Offset(w * 0.66f, h * 0.22f))
+            drawCircle(frost.copy(alpha = 0.4f * sparkleAlpha), radius = 1.5.dp.toPx(), center = Offset(w * 0.24f, h * 0.68f))
         }
         @Suppress("UNUSED_VARIABLE")
         val countdownKeptForSemantics = remainingMoves
